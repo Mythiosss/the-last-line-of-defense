@@ -8,7 +8,7 @@ import { createServer as createViteServer } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || "3000");
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
