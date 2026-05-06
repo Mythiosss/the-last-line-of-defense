@@ -155,6 +155,7 @@ export default function App() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
   
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
@@ -1029,6 +1030,20 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {roomId && (
+                        <div 
+                          className="hidden sm:flex items-center gap-2 bg-fun-cyan/10 border-2 border-fun-dark px-2 py-1.5 rounded-xl cursor-pointer hover:bg-white transition-all shadow-[2px_2px_0_0_#252A34] active:translate-x-0.5 active:translate-y-0.5"
+                          onClick={() => {
+                            navigator.clipboard.writeText(roomId);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                            playSfx('click');
+                          }}
+                        >
+                          <Terminal size={14} className="text-fun-pink" />
+                          <span className="text-[10px] font-black font-mono tracking-widest text-fun-dark">{copied ? 'COPIED!' : roomId}</span>
+                        </div>
+                      )}
                       <motion.button
                         whileHover={{ scale: 1.1, rotate: 180 }}
                         whileTap={{ scale: 0.9 }}
@@ -1038,7 +1053,7 @@ export default function App() {
                       >
                         <Lock size={14} />
                       </motion.button>
-                      <div className="bg-fun-dark text-white px-3 py-1.5 rounded-xl font-black text-[10px] tracking-widest shrink-0">
+                      <div className="bg-fun-dark text-white px-3 py-1.5 rounded-xl font-black text-[10px] tracking-widest shrink-0 shadow-[4px_4px_0_0_#252A34]">
                         MSG_{scenarioIndex + 1}
                       </div>
                     </div>
@@ -1305,23 +1320,44 @@ export default function App() {
           <motion.button 
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
-            className="win-button bg-fun-pink text-white px-6 flex items-center gap-3 font-black shadow-none border-0"
+            onClick={() => setView("MAIN_MENU")}
+            className="win-button bg-fun-pink text-white px-4 md:px-6 flex items-center gap-2 md:gap-3 font-black shadow-none border-0 shrink-0"
           >
-            <div className="w-4 h-4 bg-fun-yellow rounded-full animate-ping" /> 
-            <span className="tracking-tighter">START</span>
+            <div className="w-3 h-3 md:w-4 md:h-4 bg-fun-yellow rounded-full animate-ping" /> 
+            <span className="tracking-tighter text-xs md:text-sm">START</span>
           </motion.button>
           
-          <div className="flex-1 flex gap-2 px-4 border-l-3 border-white/10 overflow-x-auto no-scrollbar items-center">
+          <div className="flex-1 flex gap-2 px-2 md:px-4 border-l-3 border-white/10 overflow-x-auto overflow-y-hidden no-scrollbar items-center min-w-0 h-full">
              <motion.div 
-               whileHover={{ y: -4 }}
-               className={`h-10 px-6 flex items-center gap-3 bg-white rounded-2xl border-3 border-fun-dark shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${view === 'GAME' ? 'bg-fun-yellow' : 'bg-white opacity-80'}`}
+               whileHover={{ y: -2 }}
+               className={`h-9 px-3 md:h-10 md:px-6 flex items-center gap-2 md:gap-3 rounded-2xl border-3 border-fun-dark shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 ${view === 'GAME' ? 'bg-fun-yellow' : 'bg-white opacity-80'}`}
              >
-                <Mail size={18} className="text-fun-dark" /> 
-                <span className="text-xs font-black uppercase tracking-tight">Mail_Hub.ipa</span>
+                <Mail size={16} className="text-fun-dark" /> 
+                <span className="text-[9px] md:text-xs font-black uppercase tracking-tight hidden sm:inline">Mail_Hub.ipa</span>
              </motion.div>
+
+             {roomId && (
+               <motion.div 
+                 initial={{ opacity: 0, x: -10 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 whileHover={{ y: -2 }}
+                 onClick={() => {
+                    navigator.clipboard.writeText(roomId);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                    playSfx('click');
+                 }}
+                 className="h-9 px-3 md:h-10 md:px-4 flex items-center gap-2 md:gap-3 bg-fun-cyan rounded-2xl border-3 border-fun-dark shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 cursor-pointer group"
+               >
+                 <Terminal size={14} className="text-fun-dark" />
+                 <span className="text-[9px] md:text-[10px] font-black tracking-widest truncate max-w-[60px] md:max-w-none">
+                   {copied ? 'COPIED!' : roomId}
+                 </span>
+               </motion.div>
+             )}
           </div>
 
-          <div className="flex items-center gap-6 text-[11px] font-black uppercase text-white px-6">
+          <div className="hidden md:flex items-center gap-6 text-[11px] font-black uppercase text-white px-6 shrink-0">
             <div className="flex items-center gap-3">
               {masterVolume === 0 ? <VolumeX size={16} className="text-fun-pink" /> : <Volume2 size={16} className="text-fun-cyan" />}
               <div className="w-16 h-3 bg-white/10 rounded-full border-2 border-white/20 p-0.5 overflow-hidden">
