@@ -40,6 +40,7 @@ interface Player {
   callsign: string;
   score: number;
   ws: WebSocket;
+  isSpectator?: boolean;
 }
 
 interface Room {
@@ -116,11 +117,14 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          const isSpectator = room.state === "playing" && !room.players.has(playerId);
+
           room.players.set(playerId, {
             id: playerId,
             callsign,
             score: 0,
-            ws
+            ws,
+            isSpectator
           });
 
           // Sync room state
@@ -130,7 +134,8 @@ wss.on("connection", (ws) => {
               players: Array.from(room.players.values()).map(p => ({
                 id: p.id,
                 callsign: p.callsign,
-                score: p.score
+                score: p.score,
+                isSpectator: p.isSpectator
               })),
               state: room.state,
               hostId: room.hostId,
@@ -152,7 +157,8 @@ wss.on("connection", (ws) => {
               players: Array.from(room.players.values()).map(p => ({
                 id: p.id,
                 callsign: p.callsign,
-                score: p.score
+                score: p.score,
+                isSpectator: p.isSpectator
               })),
               state: room.state,
               hostId: room.hostId,
@@ -177,6 +183,9 @@ wss.on("connection", (ws) => {
           room.scenarios = scenarios;
           room.currentScenarioIndex = 0;
           room.scenarioEndTime = room.config.timerEnabled ? Date.now() + (room.config.roundDuration * 1000) : null;
+
+          // Clear spectator status for all when game starts
+          room.players.forEach(p => p.isSpectator = false);
 
           broadcast(room, {
             type: "GAME_STARTED",
@@ -264,11 +273,13 @@ wss.on("connection", (ws) => {
             broadcast(room, {
               type: "GAME_RESULTS",
               payload: {
-                players: Array.from(room.players.values()).map(p => ({
-                  id: p.id,
-                  callsign: p.callsign,
-                  score: p.score
-                })).sort((a,b) => b.score - a.score)
+                players: Array.from(room.players.values())
+                  .filter(p => !p.isSpectator)
+                  .map(p => ({
+                    id: p.id,
+                    callsign: p.callsign,
+                    score: p.score
+                  })).sort((a,b) => b.score - a.score)
               }
             });
           } else {
@@ -298,7 +309,8 @@ wss.on("connection", (ws) => {
               players: Array.from(room.players.values()).map(p => ({
                 id: p.id,
                 callsign: p.callsign,
-                score: p.score
+                score: p.score,
+                isSpectator: p.isSpectator
               })),
               hostId: room.hostId,
               config: room.config
@@ -330,7 +342,8 @@ wss.on("connection", (ws) => {
               players: Array.from(room.players.values()).map(p => ({
                 id: p.id,
                 callsign: p.callsign,
-                score: p.score
+                score: p.score,
+                isSpectator: p.isSpectator
               })),
               state: room.state,
               hostId: room.hostId,

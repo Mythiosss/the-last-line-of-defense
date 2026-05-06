@@ -154,10 +154,13 @@ export default function App() {
   const [roomConfig, setRoomConfig] = useState<any>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
   
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
   const [isCountdownOpen, setIsCountdownOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [showSettingsInPause, setShowSettingsInPause] = useState(false);
 
   const targetDate = new Date("2026-05-31T00:00:00");
   const [timeToTarget, setTimeToTarget] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -341,7 +344,7 @@ export default function App() {
 
   const [timeLeft, setTimeLeft] = useState(0);
   useEffect(() => {
-    if (!scenarioEndTime || !roomConfig?.timerEnabled || view !== "GAME" || feedback) {
+    if (!scenarioEndTime || !roomConfig?.timerEnabled || view !== "GAME" || feedback || isPaused) {
       return;
     }
     const interval = setInterval(() => {
@@ -356,7 +359,7 @@ export default function App() {
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [scenarioEndTime, roomConfig, view, feedback]);
+  }, [scenarioEndTime, roomConfig, view, feedback, isPaused]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -364,6 +367,30 @@ export default function App() {
     const s = totalSeconds % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+
+  useEffect(() => {
+    if (isPaused) {
+      setPauseStartTime(Date.now());
+    } else if (pauseStartTime && scenarioEndTime) {
+      const pauseDuration = Date.now() - pauseStartTime;
+      setScenarioEndTime(scenarioEndTime + pauseDuration);
+      setPauseStartTime(null);
+    }
+  }, [isPaused]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (view === "GAME") {
+          setIsPaused(prev => !prev);
+          setShowSettingsInPause(false);
+          playSfx('click');
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [view]);
 
   // --- Actions ---
   const handleGenerateRoomId = () => {
@@ -524,6 +551,79 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex-1 relative overflow-hidden">
+        <AnimatePresence>
+          {isPaused && (
+            <motion.div 
+              key="pause-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[110] flex items-center justify-center bg-fun-dark/80 backdrop-blur-md p-4"
+            >
+              <WinWindow title="System Paused" width="min(400px, 95vw)">
+                <div className="flex flex-col gap-4">
+                  {!showSettingsInPause ? (
+                    <>
+                      <div className="flex flex-col gap-3">
+                        <button 
+                          onClick={() => { setIsPaused(false); playSfx('click'); }}
+                          className="win-button py-3 bg-fun-cyan text-sm flex items-center justify-center gap-2"
+                        >
+                          <Play size={16} fill="currentColor" /> RESUME MISSION
+                        </button>
+                        <button 
+                          onClick={() => { setShowSettingsInPause(true); playSfx('click'); }}
+                          className="win-button py-3 bg-fun-yellow text-sm flex items-center justify-center gap-2"
+                        >
+                          <SettingsIcon size={16} /> SYSTEM CONFIG
+                        </button>
+                        <button 
+                          onClick={() => { 
+                            setIsPaused(false); 
+                            handleReturnToMenu(); 
+                            playSfx('click'); 
+                          }}
+                          className="win-button py-3 bg-fun-pink text-white text-sm flex items-center justify-center gap-2"
+                        >
+                          <X size={16} /> ABORT TO MENU
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-center font-black uppercase tracking-widest opacity-40">Operator: {callsign || 'UNKNOWN'}</p>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="win-inset p-4 bg-white border-3 border-fun-dark shadow-[4px_4px_0_0_#252A34]">
+                        <h3 className="text-xs font-black uppercase mb-3 border-b-2 border-fun-dark pb-1 text-fun-pink">Gain Controls</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-60">
+                            <span>Output Volume</span>
+                            <span>{Math.round(masterVolume * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="1" 
+                            step="0.01" 
+                            value={masterVolume} 
+                            onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                            className="w-full h-4 bg-fun-light rounded-lg appearance-none cursor-pointer border-2 border-fun-dark overflow-hidden [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-fun-pink [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-fun-dark"
+                          />
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowSettingsInPause(false)}
+                        className="win-button w-full py-2 bg-fun-cyan text-[10px]"
+                      >
+                        BACK TO PAUSE MENU
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </WinWindow>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence mode="wait">
           {countdown !== null && (
             <motion.div 
@@ -797,6 +897,17 @@ export default function App() {
                         </div>
                       </div>
                     )}
+                    
+                    {players.find(p => p.id === playerId)?.isSpectator && roomConfig && (
+                      <div className="win-inset p-6 bg-fun-pink/10 border-fun-pink/30 space-y-4">
+                        <h3 className="text-lg font-black flex items-center gap-3 border-b-4 border-fun-pink pb-2 uppercase italic tracking-tighter text-fun-pink">
+                           <Clock size={20} className="animate-spin-slow" /> Waiting Room
+                        </h3>
+                        <p className="text-xs font-bold leading-relaxed">
+                          A mission is currently in progress. You have been placed in the waiting room and will be deployed in the next operational window.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="lg:col-span-5 win-inset flex flex-col bg-white min-h-[400px] overflow-hidden">
@@ -815,12 +926,17 @@ export default function App() {
                             className="p-3 bg-fun-light rounded-xl border-3 border-fun-dark flex items-center justify-between shadow-[4px_4px_0_0_#252A34]"
                           >
                             <span className="flex items-center gap-3 font-black text-sm">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 border-fun-dark ${p.id === hostId ? 'bg-fun-yellow' : 'bg-white'}`}>
-                                <User size={16} />
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 border-fun-dark ${p.id === hostId ? 'bg-fun-yellow' : p.isSpectator ? 'bg-fun-pink' : 'bg-white'}`}>
+                                <User size={16} className={p.isSpectator ? 'text-white' : ''} />
                               </div>
-                              {p.callsign} {p.id === playerId ? '(YOU)' : ''}
+                              <span className={p.isSpectator ? 'opacity-50' : ''}>
+                                {p.callsign} {p.id === playerId ? '(YOU)' : ''}
+                              </span>
                             </span>
-                            {p.id === hostId && <span className="text-[9px] font-black bg-fun-dark text-white px-2 py-1 rounded-full uppercase italic">Command</span>}
+                            <div className="flex gap-2">
+                              {p.isSpectator && <span className="text-[8px] font-black bg-fun-pink text-white px-2 py-0.5 rounded-full uppercase">Waiting</span>}
+                              {p.id === hostId && <span className="text-[9px] font-black bg-fun-dark text-white px-2 py-1 rounded-full uppercase italic">Command</span>}
+                            </div>
                           </motion.div>
                         ))}
                       </AnimatePresence>
@@ -912,8 +1028,19 @@ export default function App() {
                         <h2 className="text-sm font-black leading-tight uppercase tracking-tight text-fun-dark line-clamp-1">{currentScenario.subject}</h2>
                       </div>
                     </div>
-                    <div className="bg-fun-dark text-white px-3 py-1.5 rounded-xl font-black text-[10px] tracking-widest shrink-0">
-                      MSG_{scenarioIndex + 1}
+                    <div className="flex items-center gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.1, rotate: 180 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => { setIsPaused(true); playSfx('click'); }}
+                        className="p-1.5 bg-fun-dark text-white rounded-lg hover:text-fun-cyan transition-colors"
+                        title="Pause (Esc)"
+                      >
+                        <Lock size={14} />
+                      </motion.button>
+                      <div className="bg-fun-dark text-white px-3 py-1.5 rounded-xl font-black text-[10px] tracking-widest shrink-0">
+                        MSG_{scenarioIndex + 1}
+                      </div>
                     </div>
                   </div>
                   

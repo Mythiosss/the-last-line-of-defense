@@ -2,6 +2,7 @@ export interface Player {
   id: string;
   callsign: string;
   score: number;
+  isSpectator?: boolean;
 }
 
 export interface Scenario {
