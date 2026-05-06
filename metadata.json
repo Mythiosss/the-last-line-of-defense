@@ -1,0 +1,6 @@
+{
+  "name": "The Last Line of Defense",
+  "description": "A cyber-awareness CTF-style game where players defend against phishing attacks and social engineering scenarios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
