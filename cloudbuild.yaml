@@ -1,0 +1,19 @@
+steps:
+  - name: 'node:20'
+    entrypoint: npm
+    args: ['install']
+
+  - name: 'node:20'
+    entrypoint: npm
+    args: ['run', 'build']
+    env:
+      - 'VITE_GEMINI_API_KEY=$_VITE_GEMINI_API_KEY'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - run
+      - deploy
+      - $_SERVICE_NAME
+      - --image=gcr.io/$PROJECT_ID/$_SERVICE_NAME:$COMMIT_SHA
+      - --region=$_DEPLOY_REGION
+      - --platform=managed
