@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
@@ -348,7 +348,11 @@ async function startServer() {
   // Scenario API
   app.get("/api/scenarios", async (req, res) => {
     const count = parseInt(req.query.count as string) || 3;
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const model = ai.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json" }
+    });
 
     const prompt = `Generate a list of EXACTLY ${count} COMPLETELY UNIQUE cyber-security scenarios for a phishing awareness game.
       CRITICAL: You MUST return EXACTLY ${count} items. 
@@ -362,12 +366,8 @@ async function startServer() {
       Random Seed for unique generation: ${Date.now()}_${Math.random()}.`;
 
     try {
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-      });
-      const text = result.text;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
       const scenarios = JSON.parse(text || "[]");
       res.json(scenarios);
     } catch (err) {
@@ -383,9 +383,21 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    // Correctly resolve dist path for production
+    const distPath = path.resolve(__dirname, "dist");
+    app.use(express.static(distPath, {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        }
+      }
+    }));
     app.get("*", (req, res) => {
+      // Prevent serving index.html for missing assets
+      if (req.path.includes(".") || req.path.startsWith("/assets")) {
+        res.status(404).send("Asset not found");
+        return;
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
