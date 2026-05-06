@@ -290,6 +290,9 @@ export default function App() {
           setPlayers(payload.players);
           setHostId(payload.hostId);
           setRoomConfig(payload.config);
+          if (payload.state === "lobby") {
+            setView("LOBBY");
+          }
           break;
         case "GAME_STARTED":
           setCurrentScenario(payload.scenario);
@@ -461,6 +464,14 @@ export default function App() {
     socketRef.current = null;
     setView("MAIN_MENU");
     setRoomId("");
+  };
+
+  const handleReturnToRoom = () => {
+    if (hostId === playerId) {
+      socketRef.current?.send(JSON.stringify({ type: "BACK_TO_LOBBY" }));
+    } else {
+      setView("LOBBY");
+    }
   };
 
   // --- Countdown Logic ---
@@ -1171,37 +1182,106 @@ export default function App() {
               exit={{ opacity: 0, scale: 0.9 }}
               className="flex items-center justify-center min-h-full p-4 overflow-y-auto"
             >
-              <WinWindow title="Operational Report" onClose={handleReturnToMenu} width="min(500px, 95vw)">
+              <WinWindow title="Operational Report" onClose={handleReturnToRoom} width="min(600px, 95vw)">
                 <div className="space-y-6 text-center">
-                  <div className="p-6 bg-fun-cyan rounded-2xl border-4 border-fun-dark shadow-[8px_8px_0_0_#252A34] -rotate-2">
-                    <Trophy size={64} className="mx-auto mb-4 text-fun-yellow drop-shadow-[0_4px_0_#252A34]" />
-                    <h2 className="text-4xl font-black tracking-tighter italic">FIN_MISSION</h2>
-                    <p className="text-xs font-black uppercase tracking-widest opacity-60">Session Summarized</p>
+                  <div className="p-6 bg-fun-cyan rounded-2xl border-4 border-fun-dark shadow-[8px_8px_0_0_#252A34] -rotate-1">
+                    <Trophy size={48} className="mx-auto mb-2 text-fun-yellow drop-shadow-[0_4px_0_#252A34]" />
+                    <h2 className="text-3xl font-black tracking-tighter italic">FIN_MISSION</h2>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Session Summarized</p>
                   </div>
 
-                  <div className="win-inset p-6 bg-white space-y-4 shadow-[4px_4px_0_0_#252A34]">
-                    <h3 className="text-sm font-black uppercase tracking-widest border-b-2 border-fun-dark pb-2">Final Rankings</h3>
-                    <div className="space-y-2">
+                  {/* Podium Section */}
+                  <div className="flex items-end justify-center gap-2 h-48 mt-4">
+                    {/* 2nd Place */}
+                    {sortedPlayers.length >= 2 && (
+                      <motion.div 
+                        initial={{ y: 50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className="flex flex-col items-center gap-2 w-24"
+                      >
+                        <div className="text-[10px] font-black truncate w-full">{sortedPlayers[1].callsign}</div>
+                        <div className="win-inset bg-fun-pink/20 border-fun-pink w-full h-24 flex flex-col items-center justify-center gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
+                           <span className="text-2xl">🥈</span>
+                           <span className="text-[10px] font-black">{sortedPlayers[1].score}</span>
+                           <div className="absolute inset-0 bg-fun-pink/10 animate-pulse pointer-events-none" />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* 1st Place */}
+                    {sortedPlayers.length >= 1 && (
+                      <motion.div 
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="flex flex-col items-center gap-2 w-32"
+                      >
+                        <div className="text-xs font-black truncate w-full text-fun-pink">{sortedPlayers[0].callsign}</div>
+                        <div className="win-inset bg-fun-yellow/40 border-fun-yellow w-full h-36 flex flex-col items-center justify-center gap-2 border-b-0 rounded-t-2xl overflow-hidden relative shadow-[0_0_20px_rgba(255,204,0,0.3)]">
+                           <Trophy size={32} className="text-fun-yellow" />
+                           <span className="text-lg font-black">{sortedPlayers[0].score}</span>
+                           <div className="absolute top-0 left-0 w-full h-1 bg-white/40" />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* 3rd Place */}
+                    {sortedPlayers.length >= 3 && (
+                      <motion.div 
+                        initial={{ y: 30, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.7 }}
+                        className="flex flex-col items-center gap-2 w-24"
+                      >
+                        <div className="text-[10px] font-black truncate w-full">{sortedPlayers[2].callsign}</div>
+                        <div className="win-inset bg-fun-cyan/20 border-fun-cyan w-full h-20 flex flex-col items-center justify-center gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
+                           <span className="text-xl">🥉</span>
+                           <span className="text-[10px] font-black">{sortedPlayers[2].score}</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <div className="win-inset p-4 bg-white space-y-3 shadow-[4px_4px_0_0_#252A34] max-h-[300px] overflow-y-auto">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest border-b-2 border-fun-dark pb-1 text-left opacity-40">Full Debrief</h3>
+                    <div className="space-y-1.5">
                       {sortedPlayers.map((p, i) => (
                         <motion.div 
                           key={p.id}
-                          initial={{ opacity: 0, x: -20 }}
+                          initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                          className={`flex items-center justify-between p-3 rounded-xl border-3 border-fun-dark ${i === 0 ? 'bg-fun-yellow' : 'bg-white'}`}
+                          transition={{ delay: 1 + i * 0.05 }}
+                          className={`flex items-center justify-between p-2 rounded-lg border-2 border-fun-dark/20 ${i === 0 ? 'bg-fun-yellow/10' : i === 1 ? 'bg-fun-pink/5' : ''}`}
                         >
-                          <span className="font-black flex items-center gap-3">
-                            <span className="w-6 text-xl">{i === 0 ? '👑' : i+1}</span>
-                            {p.callsign}
+                          <span className="font-black text-xs flex items-center gap-2">
+                            <span className="w-4 text-fun-dark/30">{i+1}</span>
+                            <span className="truncate max-w-[120px]">{p.callsign}</span>
+                            {p.id === playerId && <span className="text-[8px] bg-fun-dark text-white px-1 rounded">YOU</span>}
                           </span>
-                          <span className="text-lg font-black">{p.score} pts</span>
+                          <span className="text-xs font-black">{p.score} <span className="text-[8px] opacity-40">PTS</span></span>
                         </motion.div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <button onClick={handleReturnToMenu} className="win-button flex-1 py-4 bg-fun-dark text-white text-base">Return to Base</button>
+                  <div className="flex gap-3 pt-2">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleReturnToRoom} 
+                      className="win-button flex-1 py-3 bg-fun-cyan text-sm flex items-center justify-center gap-2"
+                    >
+                      <Users size={16} /> GO TO LOBBY
+                    </motion.button>
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleReturnToMenu} 
+                      className="win-button py-3 px-6 bg-fun-dark text-white text-[10px]"
+                    >
+                      EXIT TO BASE
+                    </motion.button>
                   </div>
                 </div>
               </WinWindow>

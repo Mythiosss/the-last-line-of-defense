@@ -318,6 +318,36 @@ wss.on("connection", (ws) => {
           });
           break;
         }
+
+        case "BACK_TO_LOBBY": {
+          if (!currentRoomId || !currentPlayerId) return;
+          const room = rooms.get(currentRoomId);
+          if (!room || room.hostId !== currentPlayerId) return;
+
+          room.state = "lobby";
+          room.currentScenarioIndex = 0;
+          room.scenarios = [];
+          room.players.forEach(p => {
+            p.score = 0;
+            p.isSpectator = false;
+          });
+
+          broadcast(room, {
+            type: "ROOM_UPDATE",
+            payload: {
+              players: Array.from(room.players.values()).map(p => ({
+                id: p.id,
+                callsign: p.callsign,
+                score: p.score,
+                isSpectator: p.isSpectator
+              })),
+              state: "lobby",
+              hostId: room.hostId,
+              config: room.config
+            }
+          });
+          break;
+        }
       }
     } catch (err) {
       console.error("WS Message Error:", err);
