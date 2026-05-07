@@ -28,10 +28,13 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Player, Scenario, Feedback, View } from "./types";
 import { BASE_SCENARIOS } from "./data/scenarios";
 
 // --- AI Setup --
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const STANDARD_IOCS = [
   "Suspicious Sender Address",
@@ -89,16 +92,46 @@ const GeminiStar = ({ className = "", size = 24 }: { className?: string, size?: 
 async function generateScenarios(count = 5, onAiStatus?: (status: 'loading' | 'success' | 'busy') => void): Promise<Scenario[]> {
   if (onAiStatus) onAiStatus('loading');
   try {
-    const res = await fetch(`/api/scenarios?count=${count}`);
-    if (!res.ok) throw new Error("Server error");
-    const scenarios = await res.json();
-    if (!Array.isArray(scenarios) || scenarios.length === 0) throw new Error("Empty");
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Generate a list of EXACTLY ${count} COMPLETELY UNIQUE cyber-security scenarios for a phishing awareness game.
+        STRICT REQUIREMENT: ZERO REPETITION. Every scenario must have a unique company name, unique sender, unique subject, and unique body.
+        CONTEXT DIVERSITY: Rotate through: Ecommerce, Fintech, SaaS, Gov, Utilities, and internal Corporate.
+        DIFFICULTY RANGE: Mix of 'easy', 'medium', and 'hard'.
+        TYPE RANGE: roughly 70% phishing/social engineering, 30% legitimate.
+        Random Seed: ${Date.now()}_${Math.random()}.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              template_id: { type: Type.STRING },
+              difficulty: { type: Type.STRING, enum: ["easy", "medium", "hard"] },
+              type: { type: Type.STRING, enum: ["phishing", "social_engineering", "legitimate"] },
+              category: { type: Type.STRING },
+              sender: { type: Type.STRING },
+              subject: { type: Type.STRING },
+              body: { type: Type.STRING },
+              red_flags: { type: Type.ARRAY, items: { type: Type.STRING } },
+              ioc_categories: { type: Type.ARRAY, items: { type: Type.STRING } },
+              explanation: { type: Type.STRING }
+            },
+            required: ["template_id", "difficulty", "type", "category", "sender", "subject", "body", "red_flags", "ioc_categories", "explanation"]
+          }
+        }
+      }
+    });
+
+    const scenarios = JSON.parse(response.text || "[]");
+    if (!Array.isArray(scenarios) || scenarios.length === 0) throw new Error("Empty AI response");
+    
     if (onAiStatus) onAiStatus('success');
     return scenarios;
   } catch (err) {
     console.warn("AI unavailable, using fallback:", err);
     if (onAiStatus) onAiStatus('busy');
-    // Keep showing "busy" for a moment before returning fallback
     await new Promise(resolve => setTimeout(resolve, 2000));
     return getFallbackScenarios(count);
   }

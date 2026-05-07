@@ -1,7 +1,6 @@
 import express from "express";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
@@ -413,37 +412,6 @@ wss.on("connection", (ws) => {
 
 // Vite Middleware for Dev
 async function startServer() {
-  // Scenario API
-  app.get("/api/scenarios", async (req, res) => {
-    const count = parseInt(req.query.count as string) || 3;
-    const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-    const model = ai.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const prompt = `Generate a list of EXACTLY ${count} COMPLETELY UNIQUE cyber-security scenarios for a phishing awareness game.
-      CRITICAL: You MUST return EXACTLY ${count} items. 
-      STRICT REQUIREMENT: ZERO REPETITION. Every scenario must have a unique company name, unique sender, unique subject, and unique body.
-      CONTEXT DIVERSITY: Rotate through: Ecommerce (Target, Walmart), Fintech (PayPal, Venmo, Coinbase), SaaS (Salesforce, Slack), Gov (IRS, Social Security), Utilities (Comcast, PG&E), and internal Corporate (Legal, Marketing, Facilities).
-      DIFFICULTY RANGE: Mix of 'easy' (obvious typos), 'medium' (look-alike domains), and 'hard' (targeted BEC or complex social engineering).
-      TYPE RANGE: roughly 70% phishing/social engineering, 30% legitimate.
-      Return a JSON array of objects.
-      Each object keys: template_id, difficulty (easy|medium|hard), type (phishing|social_engineering|legitimate), category, sender, subject, body, red_flags, ioc_categories, explanation.
-      ioc_categories must be from: [${STANDARD_IOCS.join(", ")}].
-      Random Seed for unique generation: ${Date.now()}_${Math.random()}.`;
-
-    try {
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      const scenarios = JSON.parse(text || "[]");
-      res.json(scenarios);
-    } catch (err) {
-      console.error("Gemini failed:", err);
-      res.status(500).json([]);
-    }
-  });
-
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
