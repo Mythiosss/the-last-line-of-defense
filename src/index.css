@@ -96,6 +96,21 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Custom Tech Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-fun-dark/10 rounded-full my-1;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-fun-dark/30 rounded-full border-2 border-transparent bg-clip-padding transition-colors;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-fun-cyan;
+  }
 }
 
 

@@ -8,6 +8,7 @@ import {
   Check, 
   AlertTriangle, 
   ChevronRight,
+  ChevronLeft,
   Trophy,
   Volume2,
   VolumeX,
@@ -75,15 +76,30 @@ const getFallbackScenarios = (reqCount: number) => {
   return results;
 };
 
-async function generateScenarios(count = 5): Promise<Scenario[]> {
+// Gemini Loading Star Component
+const GeminiStar = ({ className = "", size = 24 }: { className?: string, size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path 
+      d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" 
+      fill="currentColor" 
+    />
+  </svg>
+);
+
+async function generateScenarios(count = 5, onAiStatus?: (status: 'loading' | 'success' | 'busy') => void): Promise<Scenario[]> {
+  if (onAiStatus) onAiStatus('loading');
   try {
     const res = await fetch(`/api/scenarios?count=${count}`);
     if (!res.ok) throw new Error("Server error");
     const scenarios = await res.json();
     if (!Array.isArray(scenarios) || scenarios.length === 0) throw new Error("Empty");
+    if (onAiStatus) onAiStatus('success');
     return scenarios;
   } catch (err) {
     console.warn("AI unavailable, using fallback:", err);
+    if (onAiStatus) onAiStatus('busy');
+    // Keep showing "busy" for a moment before returning fallback
+    await new Promise(resolve => setTimeout(resolve, 2000));
     return getFallbackScenarios(count);
   }
 }
@@ -98,36 +114,36 @@ const WinWindow = ({ title, onClose, children, className = "", width = "auto" }:
     animate={{ opacity: 1, scale: 1, y: 0 }}
     exit={{ opacity: 0, scale: 0.8, y: 40 }}
     transition={springTransition}
-    className={`win-window ${className}`} 
-    style={{ width }}
+    className={`win-window ${className} w-fit max-w-[95vw] overflow-hidden`} 
+    style={{ width: width !== "auto" ? width : undefined }}
   >
     <div className="win-title-bar">
-      <div className="flex items-center gap-3">
-        <div className="p-1.5 bg-fun-cyan/20 rounded-lg group-hover:rotate-12 transition-transform">
-          <Monitor size={14} className="text-fun-cyan drop-shadow-sm" />
+      <div className="flex items-center gap-2 md:gap-3">
+        <div className="p-1 md:p-1.5 bg-fun-cyan/20 rounded-lg group-hover:rotate-12 transition-transform">
+          <Monitor size={12} className="text-fun-cyan drop-shadow-sm md:w-[14px] md:h-[14px]" />
         </div>
-        <span className="tracking-widest uppercase font-black text-xs">{title}</span>
+        <span className="tracking-widest uppercase font-black text-[10px] md:text-xs">{title}</span>
       </div>
-      <div className="flex gap-2">
-        <button className="win-button p-0 w-6 h-6 flex items-center justify-center bg-fun-yellow hover:bg-fun-yellow/80 transition-transform active:scale-90"><Minimize2 size={14} /></button>
-        <button className="win-button p-0 w-6 h-6 flex items-center justify-center bg-fun-cyan hover:bg-fun-cyan/80 transition-transform active:scale-90"><Maximize2 size={14} /></button>
+      <div className="flex gap-1.5 md:gap-2">
+        <button className="win-button p-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-fun-yellow hover:bg-fun-yellow/80 transition-transform active:scale-90"><Minimize2 size={12} className="md:w-[14px] md:h-[14px]" /></button>
+        <button className="win-button p-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-fun-cyan hover:bg-fun-cyan/80 transition-transform active:scale-90"><Maximize2 size={12} className="md:w-[14px] md:h-[14px]" /></button>
         {onClose && (
           <button 
             onClick={onClose} 
-            className="win-button win-button-red p-0 w-6 h-6 flex items-center justify-center bg-fun-pink hover:rotate-12 active:scale-90"
+            className="win-button win-button-red p-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center bg-fun-pink hover:rotate-12 active:scale-90 font-bold"
           >
-            <X size={14} />
+            <X size={12} className="md:w-[14px] md:h-[14px]" />
           </button>
         )}
       </div>
     </div>
-    <div className="p-1">
-      <div className="flex px-3 gap-6 py-2 border-b-3 border-fun-dark/10 mb-2 bg-fun-dark/5 rounded-lg">
+    <div className="p-0.5 md:p-1">
+      <div className="flex px-2 md:px-3 gap-4 md:gap-6 py-1.5 md:py-2 border-b-2 md:border-b-3 border-fun-dark/10 mb-1 md:mb-2 bg-fun-dark/5 rounded-lg overflow-x-auto no-scrollbar">
         {["Intel", "Scan", "Config", "Support"].map(m => (
-          <span key={m} className="text-[10px] font-black uppercase tracking-tighter cursor-pointer hover:text-fun-pink transition-colors">{m}</span>
+          <span key={m} className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter cursor-pointer hover:text-fun-pink transition-colors shrink-0">{m}</span>
         ))}
       </div>
-      <div className="p-4">
+      <div className="p-2 md:p-4 max-h-[70vh] md:max-h-none overflow-y-auto custom-scrollbar">
         {children}
       </div>
     </div>
@@ -156,6 +172,7 @@ export default function App() {
   const [roomConfig, setRoomConfig] = useState<any>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState<'loading' | 'success' | 'busy'>('loading');
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   
@@ -164,6 +181,22 @@ export default function App() {
   const [isCountdownOpen, setIsCountdownOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showSettingsInPause, setShowSettingsInPause] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isAnalysisMinimized, setIsAnalysisMinimized] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      // Optional: Auto-open sidebar when resizing to desktop
+      if (!mobile) setIsSidebarOpen(true);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const targetDate = new Date("2026-05-31T00:00:00");
   const [timeToTarget, setTimeToTarget] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -189,6 +222,7 @@ export default function App() {
   const clickSfx = useRef<HTMLAudioElement | null>(null);
   const errorSfx = useRef<HTMLAudioElement | null>(null);
   const successSfx = useRef<HTMLAudioElement | null>(null);
+  const wrongSfx = useRef<HTMLAudioElement | null>(null);
   const countdownSfx = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -200,11 +234,12 @@ export default function App() {
     // SFX - Using reliable URLs
     clickSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
     errorSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
-    successSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3");
+    successSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/600/600-preview.mp3"); // Lighter success
+    wrongSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3"); // Shorter, lower pitched error
     countdownSfx.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2560/2560-preview.mp3");
     
     // Set volumes
-    [clickSfx, errorSfx, successSfx, countdownSfx].forEach(ref => {
+    [clickSfx, errorSfx, successSfx, wrongSfx, countdownSfx].forEach(ref => {
       if (ref.current) ref.current.volume = 0.4 * masterVolume;
     });
     
@@ -224,17 +259,18 @@ export default function App() {
     if (musicRef.current) {
       musicRef.current.volume = 0.15 * masterVolume;
     }
-    [clickSfx, errorSfx, successSfx, countdownSfx].forEach(ref => {
+    [clickSfx, errorSfx, successSfx, wrongSfx, countdownSfx].forEach(ref => {
       if (ref.current) ref.current.volume = 0.4 * masterVolume;
     });
     localStorage.setItem("masterVolume", masterVolume.toString());
   }, [masterVolume]);
 
-  const playSfx = (type: 'click' | 'error' | 'success' | 'countdown') => {
+  const playSfx = (type: 'click' | 'error' | 'success' | 'wrong' | 'countdown') => {
     if (!isSfxEnabled) return;
     let audio = clickSfx.current;
     if (type === 'error') audio = errorSfx.current;
     if (type === 'success') audio = successSfx.current;
+    if (type === 'wrong') audio = wrongSfx.current;
     if (type === 'countdown') audio = countdownSfx.current;
     
     if (audio) {
@@ -278,6 +314,7 @@ export default function App() {
     const socket = new WebSocket(`${protocol}//${host}`);
     
     socket.onopen = () => {
+      setIsSocketConnected(true);
       socket.send(JSON.stringify({
         type: "JOIN_ROOM",
         payload: { roomId: rId, callsign: callsign || `RECRUIT_${playerId.substring(0,4)}`, playerId }
@@ -304,6 +341,7 @@ export default function App() {
           setCheckedIoCs([]);
           submittedRef.current = false;
           setFeedback(null);
+          setIsSidebarOpen(false);
           
           // Start countdown
           setCountdown(3);
@@ -315,7 +353,7 @@ export default function App() {
         case "ANSWER_FEEDBACK":
           setFeedback(payload);
           if (payload.correct) playSfx('success');
-          else playSfx('error');
+          else playSfx('wrong');
           break;
         case "NEW_SCENARIO":
           setCurrentScenario(payload.scenario);
@@ -435,16 +473,19 @@ export default function App() {
   const handleStartGame = async () => {
     if (hostId !== playerId) return;
     setIsLoading(true);
+    setAiStatus('loading');
     try {
-      const scenarios = await generateScenarios(roomConfig?.questionCount || 3);
+      const scenarios = await generateScenarios(roomConfig?.questionCount || 3, (status) => setAiStatus(status));
       socketRef.current?.send(JSON.stringify({ 
         type: "START_GAME", 
         payload: { scenarios } 
       }));
     } catch (err) {
       console.error("Failed to start game:", err);
+      setAiStatus('busy');
     } finally {
-      setIsLoading(false);
+      // Small delay to let the user see the "success" or "busy" state
+      setTimeout(() => setIsLoading(false), 1500);
     }
   };
 
@@ -464,8 +505,20 @@ export default function App() {
   const handleReturnToMenu = () => {
     socketRef.current?.close();
     socketRef.current = null;
+    setIsSocketConnected(false);
     setView("MAIN_MENU");
     setRoomId("");
+    setPlayers([]);
+    setHostId("");
+    setCurrentScenario(null);
+    setScenarioIndex(0);
+    setTotalScenarios(0);
+    setFeedback(null);
+    setRoomConfig(null);
+    setCheckedIoCs([]);
+    setCountdown(null);
+    setIsLoading(false);
+    setScenarioEndTime(null);
   };
 
   const handleReturnToRoom = () => {
@@ -528,39 +581,92 @@ export default function App() {
         ))}
       </div>
 
-      {/* Desktop Icons */}
+      {/* Desktop Icons / Mobile Side Nav */}
       <AnimatePresence>
         {(view === "MAIN_MENU" || view === "LOBBY" || view === "SETTINGS") && (
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="absolute top-8 left-8 flex flex-col gap-10 pointer-events-auto select-none z-10"
-          >
-            {[
-              { icon: Timer, label: "JuaraVibe", color: "bg-fun-cyan", onClick: () => setIsCountdownOpen(true) },
-              { icon: Info, label: "Credits", color: "bg-fun-pink", onClick: () => setIsCreditsOpen(true) },
-              { icon: ImageIcon, label: "photo.jpg", color: "bg-fun-yellow", onClick: () => setIsPhotoOpen(true) }
-            ].map((item, idx) => (
-              <motion.div 
-                key={idx}
-                whileHover={{ scale: 1.1, rotate: idx % 2 === 0 ? 5 : -5 }}
-                whileTap={{ scale: 0.9 }}
+          <>
+            {/* Small Toggle Button for Mobile/Tablet */}
+            {isMobile && (
+              <motion.button
+                initial={false}
+                animate={{ 
+                  left: isSidebarOpen ? 230 : 12,
+                  rotate: isSidebarOpen ? 0 : 0
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 onClick={() => {
-                  item.onClick();
+                  setIsSidebarOpen(!isSidebarOpen);
                   playSfx('click');
                 }}
-                className="flex flex-col items-center gap-2 group cursor-pointer"
+                className="fixed top-4 z-[70] w-8 h-8 bg-fun-dark border-2 border-fun-cyan rounded-md flex items-center justify-center text-fun-cyan shadow-[2px_2px_0_0_#00ffff] lg:hidden"
               >
-                <div className={`p-4 ${item.color} rounded-2xl border-4 border-fun-dark shadow-[4px_4px_0_0_#252A34]`}>
-                  <item.icon size={32} className="text-fun-dark" />
-                </div>
-                <span className="text-[12px] font-black tracking-widest uppercase bg-fun-dark text-white px-2 py-0.5 rounded-lg shadow-[2px_2px_0_0_#00ffff]">
-                  {item.label}
-                </span>
-              </motion.div>
-            ))}
-          </motion.div>
+                {isSidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+              </motion.button>
+            )}
+
+            {/* Mobile Sidebar Overlay */}
+            <AnimatePresence>
+              {isSidebarOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] lg:hidden"
+                />
+              )}
+            </AnimatePresence>
+
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className={`absolute top-4 left-4 lg:top-8 lg:left-8 flex flex-col gap-6 lg:gap-10 pointer-events-auto select-none z-[60] transition-all duration-500 ease-out 
+                ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'}
+                max-lg:fixed max-lg:top-0 max-lg:left-0 max-lg:h-screen max-lg:w-64 max-lg:bg-fun-dark/95 max-lg:p-8 max-lg:pt-24 max-lg:border-r-4 max-lg:border-fun-cyan max-lg:shadow-[20px_0_50px_rgba(0,0,0,0.8)]`}
+            >
+              {/* Mobile Only Header */}
+              <div className="lg:hidden flex flex-col gap-1 mb-8 pb-6 border-b-2 border-white/10 uppercase italic">
+                <h2 className="text-fun-cyan text-xl font-black tracking-tighter">System_Applications</h2>
+                <p className="text-white/40 text-[10px] font-bold">Authorized Personnel Only</p>
+              </div>
+
+              {[
+                { icon: Monitor, label: "Home", color: "bg-fun-cyan", onClick: () => { handleReturnToMenu(); setIsSidebarOpen(false); } },
+                { icon: Timer, label: "Juara", color: "bg-fun-cyan", onClick: () => { setIsCountdownOpen(true); setIsSidebarOpen(false); } },
+                { icon: Info, label: "Credits", color: "bg-fun-pink", onClick: () => { setIsCreditsOpen(true); setIsSidebarOpen(false); } },
+                { icon: ImageIcon, label: "photo", color: "bg-fun-yellow", onClick: () => { setIsPhotoOpen(true); setIsSidebarOpen(false); } }
+              ].map((item, idx) => (
+                <motion.div 
+                  key={idx}
+                  whileHover={{ scale: 1.1, rotate: idx % 2 === 0 ? 5 : -5 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => {
+                    item.onClick();
+                    playSfx('click');
+                  }}
+                  className="flex flex-row lg:flex-col items-center gap-4 lg:gap-1 group cursor-pointer"
+                >
+                  <div className={`p-3 lg:p-4 ${item.color} rounded-xl lg:rounded-2xl border-3 lg:border-4 border-fun-dark shadow-[3px_3px_0_0_#252A34] lg:shadow-[4px_4px_0_0_#252A34]`}>
+                    <item.icon size={24} className="text-fun-dark lg:w-8 lg:h-8" />
+                  </div>
+                  <span className="text-[10px] lg:text-[10px] font-black tracking-widest uppercase bg-fun-dark text-white px-2 py-0.5 lg:px-1.5 lg:py-0.5 rounded shadow-[1px_1px_0_0_#00ffff] border border-white/10">
+                    {item.label}
+                  </span>
+                </motion.div>
+              ))}
+
+              {/* Mobile Only Footer */}
+              <div className="mt-auto lg:hidden pt-6 border-t-2 border-white/10 flex flex-col gap-4">
+                 <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="win-button w-full py-3 bg-fun-pink text-white text-xs flex items-center justify-center gap-2"
+                 >
+                   <X size={16} /> CLOSE_MENU
+                 </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
@@ -639,6 +745,85 @@ export default function App() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
+          {isLoading && (
+            <motion.div 
+              key="loading-screen"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-fun-dark/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+            >
+              <div className="relative mb-12">
+                {/* Gemini Star Animation */}
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 90, 180, 270, 360],
+                    scale: [1, 1.2, 1]
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="text-fun-cyan"
+                >
+                  <GeminiStar size={80} />
+                </motion.div>
+                
+                {/* Pulsing Aura */}
+                <motion.div
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-fun-cyan blur-3xl rounded-full"
+                />
+
+                {/* Satellite stars */}
+                {[...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ 
+                      rotate: [i * 120, i * 120 + 360],
+                      scale: [0.5, 0.8, 0.5]
+                    }}
+                    transition={{ duration: 3 + i, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0"
+                  >
+                    <div className="absolute top-[-30px] left-1/2 -translate-x-1/2 text-fun-pink">
+                       <GeminiStar size={20} />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="space-y-4 max-w-sm">
+                <motion.h2 
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="text-2xl font-black italic tracking-tighter text-white uppercase"
+                >
+                  {aiStatus === 'loading' ? 'Generating Intel' : aiStatus === 'success' ? 'Transmission Ready' : 'Gemini is busy'}
+                </motion.h2>
+                
+                <p className="text-xs font-bold text-fun-cyan/60 tracking-widest uppercase">
+                  {aiStatus === 'loading' 
+                    ? 'Consulting Gemini Neural Network...' 
+                    : aiStatus === 'success' 
+                      ? 'AI successfully generated mission parameters.' 
+                      : 'Gemini is busy for now. Reverting to backup protocols...'}
+                </p>
+
+                <div className="w-48 h-1 bg-white/10 mx-auto rounded-full mt-6 p-0.5 overflow-hidden border border-white/5">
+                  <motion.div 
+                    className={`h-full rounded-full ${aiStatus === 'busy' ? 'bg-fun-pink' : 'bg-fun-cyan'}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: aiStatus === 'loading' ? '80%' : '100%' }}
+                    transition={{ duration: aiStatus === 'loading' ? 10 : 0.5 }}
+                  />
+                </div>
+              </div>
+
+              <div className="absolute bottom-12 text-[10px] font-black uppercase tracking-[0.3em] opacity-20">
+                Authorized_AI_System_v4.5
+              </div>
+            </motion.div>
+          )}
+
           {countdown !== null && (
             <motion.div 
               key="countdown-overlay"
@@ -659,18 +844,18 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex items-center justify-center min-h-full p-4 overflow-y-auto" 
+              className="flex flex-col items-center justify-center min-h-full p-4 overflow-y-auto pt-20 lg:pt-0"
               onClick={startAudio}
             >
               <WinWindow title="PhidshOS v2.0" width="min(450px, 95vw)">
                 <div className="flex flex-col gap-6">
-                  <div className="flex items-center gap-6 p-4 bg-fun-cyan/10 rounded-2xl border-3 border-fun-dark">
-                    <div className="p-4 bg-fun-cyan rounded-2xl border-3 border-fun-dark shadow-[4px_4px_0_0_#252A34] rotate-3 transition-transform hover:rotate-0">
-                      <Shield size={48} className="text-fun-dark" />
+                  <div className="flex items-center gap-4 md:gap-6 p-4 bg-fun-cyan/10 rounded-2xl border-3 border-fun-dark">
+                    <div className="p-3 md:p-4 bg-fun-cyan rounded-2xl border-3 border-fun-dark shadow-[4px_4px_0_0_#252A34] rotate-3 transition-transform hover:rotate-0">
+                      <Shield size={32} className="text-fun-dark md:w-12 md:h-12" />
                     </div>
                     <div>
-                      <h1 className="text-2xl font-black italic tracking-tighter text-fun-dark leading-none">CYBER_DEFENSE</h1>
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Security Awareness Training</p>
+                      <h1 className="text-lg md:text-2xl font-black italic tracking-tighter text-fun-dark leading-none uppercase">CYBER_DEFENSE</h1>
+                      <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Security Awareness Training</p>
                     </div>
                   </div>
 
@@ -742,7 +927,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex items-center justify-center min-h-full p-4 overflow-y-auto"
+              className="flex flex-col items-center justify-center min-h-full p-4 overflow-y-auto pt-20 lg:pt-0"
             >
               <WinWindow title="System Config" onClose={() => setView("MAIN_MENU")} width="min(450px, 95vw)">
                 <div className="space-y-6">
@@ -812,14 +997,14 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex items-center justify-center min-h-full p-4 overflow-y-auto"
+              className="flex flex-col items-center justify-center min-h-full p-4 overflow-y-auto pt-20 lg:pt-0"
             >
               <WinWindow title="Net_Link Control" onClose={handleReturnToMenu} width="min(800px, 95vw)">
-                <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-7 space-y-6">
-                    <div className="win-inset p-6 bg-white space-y-4">
-                      <h3 className="text-lg font-black flex items-center gap-3 border-b-4 border-fun-dark pb-2 uppercase italic tracking-tighter">
-                        <Terminal size={20} className="text-fun-cyan" /> Uplink Terminal
+                <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6">
+                  <div className="lg:col-span-7 space-y-4 lg:space-y-6">
+                    <div className="win-inset p-4 lg:p-6 bg-white space-y-4">
+                      <h3 className="text-base lg:text-lg font-black flex items-center gap-3 border-b-4 border-fun-dark pb-2 uppercase italic tracking-tighter">
+                        <Terminal size={18} className="text-fun-cyan lg:w-5 lg:h-5" /> Uplink Terminal
                       </h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -831,11 +1016,11 @@ export default function App() {
                                 value={roomId} 
                                 onChange={(e) => setRoomId(e.target.value.toUpperCase())}
                                 placeholder="XXXX-XXXX"
-                                disabled={!!socketRef.current}
+                                disabled={isSocketConnected}
                                 className="win-input flex-1 min-w-0 font-mono tracking-widest text-center"
                                 autoComplete="off"
                               />
-                              {!socketRef.current && (
+                              {!isSocketConnected && (
                                 <button 
                                   onClick={() => {
                                     handleGenerateRoomId();
@@ -859,14 +1044,14 @@ export default function App() {
                                 setCallsign(val);
                                 localStorage.setItem("callsign", val);
                               }}
-                              disabled={!!socketRef.current} 
+                              disabled={isSocketConnected} 
                               className="win-input w-full font-bold"
                               autoComplete="off"
                             />
                           </div>
                         </div>
 
-                        {!socketRef.current && (
+                        {!isSocketConnected && (
                           <motion.button 
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -924,8 +1109,8 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="lg:col-span-5 win-inset flex flex-col bg-white min-h-[400px] overflow-hidden">
-                    <div className="bg-fun-dark text-white px-4 py-3 text-xs font-black uppercase tracking-widest flex justify-between shrink-0">
+                  <div className="lg:col-span-5 win-inset flex flex-col bg-white min-h-[300px] lg:min-h-[400px] overflow-hidden">
+                    <div className="bg-fun-dark text-white px-4 py-3 text-[10px] font-black uppercase tracking-widest flex justify-between shrink-0">
                       <span className="flex items-center gap-2"><Users size={14} className="text-fun-pink" /> Authorized Ops</span>
                       <span className="bg-fun-pink px-2 py-0.5 rounded-lg">{players.length} active</span>
                     </div>
@@ -999,29 +1184,29 @@ export default function App() {
                 )}
               </AnimatePresence>
 
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative z-10">
+              <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden relative z-10">
                 {/* Left Panel: Explorer/Intel */}
-                <div className="w-full md:w-64 flex flex-row md:flex-col gap-4 shrink-0">
-                  <div className="win-inset flex-1 hidden md:flex min-h-0 bg-white overflow-hidden flex-col shadow-[4px_4px_0_0_#252A34]">
+                <div className="w-full lg:w-64 flex flex-row lg:flex-col gap-3 lg:gap-4 shrink-0">
+                  <div className="win-inset flex-1 hidden sm:flex min-h-0 bg-white overflow-hidden flex-col shadow-[4px_4px_0_0_#252A34]">
                     <div className="bg-fun-dark text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0">
                       <Trophy size={12} className="text-fun-yellow" /> Live Analytics
                     </div>
-                    <div className="p-3 flex-1 overflow-y-auto space-y-2">
+                    <div className="p-2 lg:p-3 flex-1 overflow-y-auto space-y-1.5 lg:space-y-2">
                        {sortedPlayers.map((p, i) => (
-                        <div key={p.id} className={`p-2 rounded-lg border-2 border-fun-dark flex justify-between items-center ${p.id === playerId ? 'bg-fun-yellow font-black' : 'bg-white font-bold'} text-xs`}>
-                          <span className="truncate">#{i+1} {p.callsign}</span>
-                          <span className="bg-fun-dark text-white px-2 py-0.5 rounded text-[9px]">{p.score}</span>
+                        <div key={p.id} className={`p-1.5 lg:p-2 rounded-lg border-2 border-fun-dark flex justify-between items-center ${p.id === playerId ? 'bg-fun-yellow font-black' : 'bg-white font-bold'} text-[10px] lg:text-xs`}>
+                          <span className="truncate max-w-[80px] lg:max-w-none">#{i+1} {p.callsign}</span>
+                          <span className="bg-fun-dark text-white px-1.5 py-0.5 rounded text-[8px] lg:text-[9px]">{p.score}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="win-inset h-24 md:h-32 flex-1 md:flex-none bg-fun-dark p-4 flex flex-col justify-center items-center shadow-[4px_4px_0_0_#252A34]">
-                    <div className={`text-2xl font-black tabular-nums tracking-tighter ${roomConfig?.timerEnabled && timeLeft < (roomConfig.roundDuration * 1000 * 0.25) ? 'text-fun-pink animate-pulse' : 'text-fun-cyan'}`}>
+                  <div className="win-inset h-20 sm:h-24 lg:h-32 flex-1 lg:flex-none bg-fun-dark p-3 lg:p-4 flex flex-col justify-center items-center shadow-[4px_4px_0_0_#252A34]">
+                    <div className={`text-xl lg:text-2xl font-black tabular-nums tracking-tighter ${roomConfig?.timerEnabled && timeLeft < (roomConfig.roundDuration * 1000 * 0.25) ? 'text-fun-pink animate-pulse' : 'text-fun-cyan'}`}>
                       {roomConfig?.timerEnabled && !feedback ? formatTime(timeLeft) : '---'}
                     </div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-white opacity-40 mt-1">Uplink Status</div>
-                    <div className="w-full h-3 bg-white/10 mt-3 rounded-full border-2 border-white/20 p-0.5 overflow-hidden">
+                    <div className="text-[8px] lg:text-[9px] font-black uppercase tracking-widest text-white opacity-40 mt-0.5 lg:mt-1">Uplink Status</div>
+                    <div className="w-full h-2 lg:h-3 bg-white/10 mt-2 lg:mt-3 rounded-full border-2 border-white/20 p-0.5 overflow-hidden">
                       <motion.div 
                         className="bg-fun-cyan h-full rounded-full shadow-[0_0_10px_#08D9D6]" 
                         animate={{ width: `${((scenarioIndex + 1) / totalScenarios) * 100}%` }}
@@ -1081,97 +1266,108 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex-1 p-6 md:p-10 overflow-y-auto whitespace-pre-wrap font-fun font-semibold text-base leading-relaxed text-fun-dark bg-fun-light/30">
+                  <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-10 overflow-y-auto whitespace-pre-wrap font-fun font-semibold text-sm md:text-base leading-relaxed text-fun-dark bg-fun-light/30">
                     {currentScenario.body}
                   </div>
 
                   {roomConfig?.analysisEnabled && !feedback && (
-                    <div className="p-4 bg-fun-dark text-white shrink-0 rounded-b-xl border-t-3 border-fun-dark">
-                      <div className="text-[10px] font-black tracking-widest opacity-40 mb-3 uppercase">Heuristic Analysis (Check active indicators)</div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {STANDARD_IOCS.map(ioc => (
-                          <label key={ioc} className={`flex items-center gap-3 p-2 rounded-lg border-2 transition-all cursor-pointer ${checkedIoCs.includes(ioc) ? 'bg-fun-pink border-white text-white' : 'bg-white/5 border-transparent hover:bg-white/10'} shadow-none transition-transform active:scale-95`}>
-                            <input 
-                              type="checkbox" 
-                              className="hidden"
-                              checked={checkedIoCs.includes(ioc)}
-                              onChange={(e) => {
-                                if (e.target.checked) setCheckedIoCs([...checkedIoCs, ioc]);
-                                else setCheckedIoCs(checkedIoCs.filter(x => x !== ioc));
-                                playSfx('click');
-                              }}
-                            />
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${checkedIoCs.includes(ioc) ? 'bg-white border-white' : 'border-white/30'}`}>
-                              {checkedIoCs.includes(ioc) && <Check size={10} className="text-fun-pink" />}
-                            </div>
-                            <span className="text-[10px] font-black truncate">{ioc}</span>
-                          </label>
-                        ))}
+                    <div className={`bg-fun-dark text-white shrink-0 rounded-b-xl border-t-3 border-fun-dark transition-all duration-300 ${isAnalysisMinimized ? 'h-10' : 'p-3 md:p-4'}`}>
+                      <div 
+                        className="flex justify-between items-center cursor-pointer mb-2"
+                        onClick={() => setIsAnalysisMinimized(!isAnalysisMinimized)}
+                      >
+                        <div className="text-[9px] font-black tracking-widest opacity-40 uppercase flex items-center gap-2">
+                          <Terminal size={10} /> {isAnalysisMinimized ? 'ANALYSIS_PAUSED' : 'Heuristic Analysis (Check active indicators)'}
+                        </div>
+                        <div className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded hover:bg-white/20 transition-colors uppercase">
+                          {isAnalysisMinimized ? 'MAXIMIZE' : 'MINIMIZE'}
+                        </div>
                       </div>
+                      {!isAnalysisMinimized && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {STANDARD_IOCS.map(ioc => (
+                            <label key={ioc} className={`flex items-center gap-2 p-1.5 rounded-lg border-2 transition-all cursor-pointer ${checkedIoCs.includes(ioc) ? 'bg-fun-pink border-white text-white' : 'bg-white/5 border-transparent hover:bg-white/10'} active:scale-95`}>
+                              <input 
+                                type="checkbox" 
+                                className="hidden"
+                                checked={checkedIoCs.includes(ioc)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setCheckedIoCs([...checkedIoCs, ioc]);
+                                  else setCheckedIoCs(checkedIoCs.filter(x => x !== ioc));
+                                  playSfx('click');
+                                }}
+                              />
+                              <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 ${checkedIoCs.includes(ioc) ? 'bg-white border-white' : 'border-white/30'}`}>
+                                {checkedIoCs.includes(ioc) && <Check size={8} className="text-fun-pink" />}
+                              </div>
+                              <span className="text-[9px] font-black truncate">{ioc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Action Panel */}
-              <div className="h-24 flex gap-4 shrink-0">
+              <div className="h-20 md:h-24 flex gap-2 md:gap-4 shrink-0">
                 {!feedback ? (
                   <>
                     <motion.button 
                       whileHover={{ scale: 1.02, y: -4 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleSubmitAnswer(true)} 
-                      className="win-button flex-1 bg-fun-cyan text-base flex flex-col justify-center items-center gap-1 shadow-[8px_8px_0_0_#252A34]"
+                      className="win-button flex-1 bg-fun-cyan text-base flex flex-col justify-center items-center gap-0.5 md:gap-1 shadow-[4px_4px_0_0_#252A34] md:shadow-[8px_8px_0_0_#252A34]"
                     >
-                      <span className="text-lg">VALIDATE_AUTH</span>
-                      <span className="text-[9px] font-black opacity-60">Looks legitimate to me</span>
+                      <span className="text-xs md:text-lg">VALIDATE_AUTH</span>
+                      <span className="text-[7px] md:text-[9px] font-black opacity-60">Looks legitimate</span>
                     </motion.button>
                     <motion.button 
                       whileHover={{ scale: 1.02, y: -4 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleSubmitAnswer(false)} 
-                      className="win-button flex-1 bg-fun-pink text-white text-base flex flex-col justify-center items-center gap-1 shadow-[8px_8px_0_0_#252A34]"
+                      className="win-button flex-1 bg-fun-pink text-white text-base flex flex-col justify-center items-center gap-0.5 md:gap-1 shadow-[4px_4px_0_0_#252A34] md:shadow-[8px_8px_0_0_#252A34]"
                     >
-                      <span className="text-lg">REPORT_THREAT</span>
-                      <span className="text-[9px] font-black opacity-60 italic">{checkedIoCs.length} INDICATORS FLAGGED</span>
+                      <span className="text-xs md:text-lg">REPORT_THREAT</span>
+                      <span className="text-[7px] md:text-[9px] font-black opacity-60 italic">{checkedIoCs.length} INDICATORS FLAGGED</span>
                     </motion.button>
                   </>
                 ) : (
                   <motion.div 
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className={`flex-1 p-4 rounded-2xl border-4 border-fun-dark shadow-[8px_8px_0_0_#252A34] flex items-center justify-between gap-6 ${feedback.correct ? 'bg-fun-cyan' : 'bg-fun-pink text-white'}`}
+                    className={`flex-1 p-3 md:p-4 rounded-xl md:rounded-2xl border-3 md:border-4 border-fun-dark shadow-[4px_4px_0_0_#252A34] md:shadow-[8px_8px_0_0_#252A34] flex items-center justify-between gap-3 md:gap-6 ${feedback.correct ? 'bg-fun-cyan' : 'bg-fun-pink text-white'}`}
                   >
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-2xl bg-white border-2 border-fun-dark flex items-center justify-center shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
-                         {feedback.correct ? <Check size={32} className="text-fun-cyan" /> : <AlertTriangle size={32} className="text-fun-pink" />}
+                    <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                      <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white border-2 border-fun-dark flex items-center justify-center shrink-0 shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]">
+                         {feedback.correct ? <Check size={20} className="text-fun-cyan md:w-8 md:h-8" /> : <AlertTriangle size={20} className="text-fun-pink md:w-8 md:h-8" />}
                       </div>
-                      <div className="space-y-1">
-                        <h4 className="text-xl font-black italic tracking-tighter uppercase leading-none">
+                      <div className="space-y-0.5 md:space-y-1 min-w-0">
+                        <h4 className="text-sm md:text-xl font-black italic tracking-tighter uppercase leading-none truncate">
                           {feedback.timedOut ? 'TIME_EXPIRED' : (feedback.correct ? 'INTEGRITY_SUCCESS' : 'PROTOCOL_FAILURE')}
                         </h4>
-                        <p className="text-xs font-bold opacity-80 leading-tight max-w-xl">
-                          {feedback.timedOut ? "You did not respond in time! " : ""}
+                        <p className="text-[8px] md:text-xs font-bold opacity-80 leading-tight line-clamp-2 md:line-clamp-none">
+                          {feedback.timedOut ? "No response... " : ""}
                           {feedback.explanation}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 md:gap-6 shrink-0">
                       {feedback.scoreGained !== undefined && (
-                        <div className="text-2xl font-black italic">+{feedback.scoreGained}</div>
+                        <div className="text-sm md:text-2xl font-black italic">+{feedback.scoreGained}</div>
                       )}
                       {hostId === playerId ? (
                         <motion.button 
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={handleNextScenario} 
-                          className={`win-button py-2 px-8 flex flex-col items-center justify-center ${allAnswered ? 'bg-white text-fun-dark' : 'bg-fun-yellow text-fun-dark'}`}
+                          className={`win-button py-1.5 px-4 md:py-2 md:px-8 flex flex-col items-center justify-center ${allAnswered ? 'bg-white text-fun-dark' : 'bg-fun-yellow text-fun-dark'}`}
                         >
-                          <span className="font-black">{allAnswered ? "CONTINUE" : "FORCE SKIP"}</span>
-                          {!allAnswered && <span className="text-[8px] uppercase tracking-widest">{activePlayers.filter(p => p.hasAnswered).length} / {activePlayers.length} READY</span>}
+                          <span className="font-black text-[10px] md:text-base">{allAnswered ? "CONTINUE" : "SKIP"}</span>
                         </motion.button>
                       ) : (
-                        <div className="text-[10px] font-black uppercase text-center w-32 opacity-60 italic">Awaiting Next Intel Burst...</div>
+                        <div className="text-[7px] md:text-[10px] font-black uppercase text-center w-20 md:w-32 opacity-60 italic">Awaiting...</div>
                       )}
                     </div>
                   </motion.div>
@@ -1186,7 +1382,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 1.1 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center justify-center min-h-full p-4 overflow-y-auto"
+              className="flex flex-col items-center justify-center min-h-full p-4 overflow-y-auto pt-20 lg:pt-0"
             >
               <WinWindow title="Operational Report" onClose={handleReturnToRoom} width="min(600px, 95vw)">
                 <div className="space-y-6 text-center">
@@ -1197,19 +1393,19 @@ export default function App() {
                   </div>
 
                   {/* Podium Section */}
-                  <div className="flex items-end justify-center gap-2 h-48 mt-4">
+                  <div className="flex items-end justify-center gap-1 md:gap-2 h-32 md:h-48 mt-2 md:mt-4">
                     {/* 2nd Place */}
                     {sortedPlayers.length >= 2 && (
                       <motion.div 
                         initial={{ y: 50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="flex flex-col items-center gap-2 w-24"
+                        className="flex flex-col items-center gap-1 md:gap-2 w-20 md:w-24"
                       >
-                        <div className="text-[10px] font-black truncate w-full">{sortedPlayers[1].callsign}</div>
-                        <div className="win-inset bg-fun-pink/20 border-fun-pink w-full h-24 flex flex-col items-center justify-center gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
-                           <span className="text-2xl">🥈</span>
-                           <span className="text-[10px] font-black">{sortedPlayers[1].score}</span>
+                        <div className="text-[8px] md:text-[10px] font-black truncate w-full">{sortedPlayers[1].callsign}</div>
+                        <div className="win-inset bg-fun-pink/20 border-fun-pink w-full h-16 md:h-24 flex flex-col items-center justify-center gap-0.5 md:gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
+                           <span className="text-xl md:text-2xl">🥈</span>
+                           <span className="text-[8px] md:text-[10px] font-black">{sortedPlayers[1].score}</span>
                            <div className="absolute inset-0 bg-fun-pink/10 animate-pulse pointer-events-none" />
                         </div>
                       </motion.div>
@@ -1221,12 +1417,12 @@ export default function App() {
                         initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="flex flex-col items-center gap-2 w-32"
+                        className="flex flex-col items-center gap-1 md:gap-2 w-24 md:w-32"
                       >
-                        <div className="text-xs font-black truncate w-full text-fun-pink">{sortedPlayers[0].callsign}</div>
-                        <div className="win-inset bg-fun-yellow/40 border-fun-yellow w-full h-36 flex flex-col items-center justify-center gap-2 border-b-0 rounded-t-2xl overflow-hidden relative shadow-[0_0_20px_rgba(255,204,0,0.3)]">
-                           <Trophy size={32} className="text-fun-yellow" />
-                           <span className="text-lg font-black">{sortedPlayers[0].score}</span>
+                        <div className="text-[9px] md:text-xs font-black truncate w-full text-fun-pink">{sortedPlayers[0].callsign}</div>
+                        <div className="win-inset bg-fun-yellow/40 border-fun-yellow w-full h-24 md:h-36 flex flex-col items-center justify-center gap-1 md:gap-2 border-b-0 rounded-t-2xl overflow-hidden relative shadow-[0_0_20px_rgba(255,204,0,0.3)]">
+                           <Trophy size={20} className="text-fun-yellow md:w-8 md:h-8" />
+                           <span className="text-sm md:text-lg font-black">{sortedPlayers[0].score}</span>
                            <div className="absolute top-0 left-0 w-full h-1 bg-white/40" />
                         </div>
                       </motion.div>
@@ -1238,12 +1434,12 @@ export default function App() {
                         initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.7 }}
-                        className="flex flex-col items-center gap-2 w-24"
+                        className="flex flex-col items-center gap-1 md:gap-2 w-20 md:w-24"
                       >
-                        <div className="text-[10px] font-black truncate w-full">{sortedPlayers[2].callsign}</div>
-                        <div className="win-inset bg-fun-cyan/20 border-fun-cyan w-full h-20 flex flex-col items-center justify-center gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
-                           <span className="text-xl">🥉</span>
-                           <span className="text-[10px] font-black">{sortedPlayers[2].score}</span>
+                        <div className="text-[8px] md:text-[10px] font-black truncate w-full">{sortedPlayers[2].callsign}</div>
+                        <div className="win-inset bg-fun-cyan/20 border-fun-cyan w-full h-12 md:h-20 flex flex-col items-center justify-center gap-0.5 md:gap-1 border-b-0 rounded-t-xl overflow-hidden relative">
+                           <span className="text-lg md:text-xl">🥉</span>
+                           <span className="text-[8px] md:text-[10px] font-black">{sortedPlayers[2].score}</span>
                         </div>
                       </motion.div>
                     )}
@@ -1401,25 +1597,28 @@ export default function App() {
       </main>
 
       {/* Taskbar */}
-      <footer className="h-16 px-4 pb-4 relative z-50 shrink-0 mt-auto">
-        <div className="h-full bg-fun-dark/95 backdrop-blur-xl border-3 border-fun-dark rounded-3xl p-2 flex gap-3 shadow-[8px_8px_0_0_rgba(0,0,0,0.4)]">
+      <footer className="h-16 px-2 md:px-4 pb-4 md:pb-4 relative z-50 shrink-0 mt-auto">
+        <div className="h-full bg-fun-dark/95 backdrop-blur-xl border-3 border-fun-dark rounded-2xl md:rounded-3xl p-1.5 md:p-2 flex gap-2 md:gap-3 shadow-[4px_4px_0_0_rgba(0,0,0,0.4)] md:shadow-[8px_8px_0_0_rgba(0,0,0,0.4)]">
           <motion.button 
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setView("MAIN_MENU")}
-            className="win-button bg-fun-pink text-white px-4 md:px-6 flex items-center gap-2 md:gap-3 font-black shadow-none border-0 shrink-0"
+            onClick={() => {
+              handleReturnToMenu();
+              playSfx('click');
+            }}
+            className="win-button bg-fun-pink text-white px-3 md:px-6 flex items-center gap-2 md:gap-3 font-black shadow-none border-0 shrink-0"
           >
-            <div className="w-3 h-3 md:w-4 md:h-4 bg-fun-yellow rounded-full animate-ping" /> 
-            <span className="tracking-tighter text-xs md:text-sm">START</span>
+            <div className="w-2 h-2 md:w-3 md:h-3 md:w-4 md:h-4 bg-fun-yellow rounded-full animate-ping" /> 
+            <span className="tracking-tighter text-[10px] md:text-sm">START</span>
           </motion.button>
           
-          <div className="flex-1 flex gap-2 px-2 md:px-4 border-l-3 border-white/10 overflow-x-auto overflow-y-hidden no-scrollbar items-center min-w-0 h-full">
+          <div className="flex-1 flex gap-1 md:gap-2 px-1 md:px-4 border-l-2 md:border-l-3 border-white/10 overflow-x-auto overflow-y-hidden no-scrollbar items-center min-w-0 h-full">
              <motion.div 
                whileHover={{ y: -2 }}
-               className={`h-9 px-3 md:h-10 md:px-6 flex items-center gap-2 md:gap-3 rounded-2xl border-3 border-fun-dark shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 ${view === 'GAME' ? 'bg-fun-yellow' : 'bg-white opacity-80'}`}
+               className={`h-8 px-2 md:h-10 md:px-6 flex items-center gap-1.5 md:gap-3 rounded-xl md:rounded-2xl border-2 md:border-3 border-fun-dark shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 ${view === 'GAME' ? 'bg-fun-yellow' : 'bg-white opacity-80'}`}
              >
-                <Mail size={16} className="text-fun-dark" /> 
-                <span className="text-[9px] md:text-xs font-black uppercase tracking-tight hidden sm:inline">Mail_Hub.ipa</span>
+                <Mail size={14} className="text-fun-dark md:w-4 md:h-4" /> 
+                <span className="text-[8px] md:text-xs font-black uppercase tracking-tight hidden sm:inline">Mail_Hub.ipa</span>
              </motion.div>
 
              {roomId && (
@@ -1433,11 +1632,11 @@ export default function App() {
                     setTimeout(() => setCopied(false), 2000);
                     playSfx('click');
                  }}
-                 className="h-9 px-3 md:h-10 md:px-4 flex items-center gap-2 md:gap-3 bg-fun-cyan rounded-2xl border-3 border-fun-dark shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 cursor-pointer group"
+                 className="h-8 px-2 md:h-10 md:px-4 flex items-center gap-1.5 md:gap-3 bg-fun-cyan rounded-xl md:rounded-2xl border-2 md:border-3 border-fun-dark shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all shrink-0 cursor-pointer group"
                >
-                 <Terminal size={14} className="text-fun-dark" />
-                 <span className="text-[9px] md:text-[10px] font-black tracking-widest truncate max-w-[60px] md:max-w-none">
-                   {copied ? 'COPIED!' : roomId}
+                 <Terminal size={12} className="text-fun-dark md:w-3.5 md:h-3.5" />
+                 <span className="text-[8px] md:text-[10px] font-black tracking-widest truncate max-w-[50px] md:max-w-none uppercase">
+                   {copied ? 'COPIED!' : roomId.split('-')[0]}
                  </span>
                </motion.div>
              )}
