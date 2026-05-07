@@ -3,6 +3,7 @@ export interface Player {
   callsign: string;
   score: number;
   isSpectator?: boolean;
+  hasAnswered?: boolean;
 }
 
 export interface Scenario {
@@ -23,6 +24,7 @@ export interface Feedback {
   explanation: string;
   red_flags: string[];
   scoreGained?: number;
+  timedOut?: boolean;
 }
 
 export type View = "MAIN_MENU" | "LOBBY" | "GAME" | "RESULTS" | "SETTINGS";

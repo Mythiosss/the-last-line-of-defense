@@ -41,6 +41,7 @@ interface Player {
   score: number;
   ws: WebSocket;
   isSpectator?: boolean;
+  hasAnswered?: boolean;
 }
 
 interface Room {
@@ -135,7 +136,8 @@ wss.on("connection", (ws) => {
                 id: p.id,
                 callsign: p.callsign,
                 score: p.score,
-                isSpectator: p.isSpectator
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               })),
               state: room.state,
               hostId: room.hostId,
@@ -158,7 +160,8 @@ wss.on("connection", (ws) => {
                 id: p.id,
                 callsign: p.callsign,
                 score: p.score,
-                isSpectator: p.isSpectator
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               })),
               state: room.state,
               hostId: room.hostId,
@@ -184,8 +187,11 @@ wss.on("connection", (ws) => {
           room.currentScenarioIndex = 0;
           room.scenarioEndTime = room.config.timerEnabled ? Date.now() + (room.config.roundDuration * 1000) : null;
 
-          // Clear spectator status for all when game starts
-          room.players.forEach(p => p.isSpectator = false);
+          // Clear spectator and answer status for all when game starts
+          room.players.forEach(p => {
+            p.isSpectator = false;
+            p.hasAnswered = false;
+          });
 
           broadcast(room, {
             type: "GAME_STARTED",
@@ -213,6 +219,7 @@ wss.on("connection", (ws) => {
           
           let scoreGained = 0;
           let isCorrectBase = false;
+          player.hasAnswered = true;
 
           if (!timeout) {
             if (isSafe && !isActualPhishing) {
@@ -244,7 +251,8 @@ wss.on("connection", (ws) => {
               correct: isCorrectBase,
               explanation: currentScenario.explanation,
               red_flags: currentScenario.red_flags,
-              scoreGained: Math.max(0, scoreGained)
+              scoreGained: Math.max(0, scoreGained),
+              timedOut: timeout
             }
           }));
 
@@ -254,10 +262,24 @@ wss.on("connection", (ws) => {
               players: Array.from(room.players.values()).map(p => ({
                 id: p.id,
                 callsign: p.callsign,
-                score: p.score
+                score: p.score,
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               }))
             }
           });
+          
+          // Check if all active players have answered
+          const allAnswered = Array.from(room.players.values())
+            .filter(p => !p.isSpectator)
+            .every(p => p.hasAnswered);
+            
+          if (allAnswered) {
+             broadcast(room, {
+               type: "ALL_PLAYERS_ANSWERED",
+               payload: {}
+             });
+          }
           break;
         }
 
@@ -310,7 +332,8 @@ wss.on("connection", (ws) => {
                 id: p.id,
                 callsign: p.callsign,
                 score: p.score,
-                isSpectator: p.isSpectator
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               })),
               hostId: room.hostId,
               config: room.config
@@ -339,7 +362,8 @@ wss.on("connection", (ws) => {
                 id: p.id,
                 callsign: p.callsign,
                 score: p.score,
-                isSpectator: p.isSpectator
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               })),
               state: "lobby",
               hostId: room.hostId,
@@ -373,7 +397,8 @@ wss.on("connection", (ws) => {
                 id: p.id,
                 callsign: p.callsign,
                 score: p.score,
-                isSpectator: p.isSpectator
+                isSpectator: p.isSpectator,
+                hasAnswered: p.hasAnswered
               })),
               state: room.state,
               hostId: room.hostId,

@@ -142,6 +142,8 @@ export default function App() {
   const [playerId] = useState(() => Math.random().toString(36).substring(7));
   const [players, setPlayers] = useState<Player[]>([]);
   const sortedPlayers = React.useMemo(() => [...players].sort((a, b) => b.score - a.score), [players]);
+  const activePlayers = React.useMemo(() => players.filter(p => !p.isSpectator), [players]);
+  const allAnswered = React.useMemo(() => activePlayers.every(p => p.hasAnswered), [activePlayers]);
   const [hostId, setHostId] = useState("");
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(null);
   const [scenarioIndex, setScenarioIndex] = useState(0);
@@ -1146,9 +1148,12 @@ export default function App() {
                       </div>
                       <div className="space-y-1">
                         <h4 className="text-xl font-black italic tracking-tighter uppercase leading-none">
-                          {feedback.correct ? 'INTEGRITY_SUCCESS' : 'PROTOCOL_FAILURE'}
+                          {feedback.timedOut ? 'TIME_EXPIRED' : (feedback.correct ? 'INTEGRITY_SUCCESS' : 'PROTOCOL_FAILURE')}
                         </h4>
-                        <p className="text-xs font-bold opacity-80 leading-tight max-w-xl">{feedback.explanation}</p>
+                        <p className="text-xs font-bold opacity-80 leading-tight max-w-xl">
+                          {feedback.timedOut ? "You did not respond in time! " : ""}
+                          {feedback.explanation}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
@@ -1157,12 +1162,13 @@ export default function App() {
                       )}
                       {hostId === playerId ? (
                         <motion.button 
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={handleNextScenario} 
-                          className="win-button py-2 px-8 bg-white text-fun-dark"
+                          className={`win-button py-2 px-8 flex flex-col items-center justify-center ${allAnswered ? 'bg-white text-fun-dark' : 'bg-fun-yellow text-fun-dark'}`}
                         >
-                          CONTINUE
+                          <span className="font-black">{allAnswered ? "CONTINUE" : "FORCE SKIP"}</span>
+                          {!allAnswered && <span className="text-[8px] uppercase tracking-widest">{activePlayers.filter(p => p.hasAnswered).length} / {activePlayers.length} READY</span>}
                         </motion.button>
                       ) : (
                         <div className="text-[10px] font-black uppercase text-center w-32 opacity-60 italic">Awaiting Next Intel Burst...</div>
